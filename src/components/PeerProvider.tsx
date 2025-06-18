@@ -93,6 +93,17 @@ export function PeerProvider({ children, peerServerOptions }: PeerProviderProps)
     return () => clearTimeout(timeout);
   }, [isLoading]);
 
+  // Clear debug info after successful setup
+  useEffect(() => {
+    if (!isLoading && !error && debugInfo.length > 0) {
+      const clearDebugTimeout = setTimeout(() => {
+        setDebugInfo([]);
+      }, 2000); // Clear debug info 2 seconds after successful setup
+      
+      return () => clearTimeout(clearDebugTimeout);
+    }
+  }, [isLoading, error, debugInfo.length]);
+
   // Initialize all hooks
   const { networkInfo, isLoading: networkLoading, error: networkError } = useNetworkInfo();
   const { groups, peers, addPeer, removePeer, updatePeerAudioLevel } = useGroups(networkInfo);
@@ -244,11 +255,18 @@ export function PeerProvider({ children, peerServerOptions }: PeerProviderProps)
     const hasLocalStream = localStream !== null;
     const hasPeerId = peerId !== null;
     
-    addDebugInfo(`Loading check - Network: ${hasNetworkInfo}, Stream: ${hasLocalStream}, Peer: ${hasPeerId}`);
+    addDebugInfo(`Loading check - Network: ${networkInfo || 'none'}, Stream: ${hasLocalStream}, Peer: ${hasPeerId}`);
     
     const hasAllRequiredData = hasNetworkInfo && hasLocalStream && hasPeerId;
-    setIsLoading(!hasAllRequiredData);
-  }, [networkLoading, networkInfo, localStream, peerId]);
+    const shouldBeLoading = !hasAllRequiredData;
+    
+    if (isLoading !== shouldBeLoading) {
+      setIsLoading(shouldBeLoading);
+      if (!shouldBeLoading) {
+        addDebugInfo('Setup complete - all components ready');
+      }
+    }
+  }, [networkLoading, networkInfo, localStream, peerId, isLoading]);
 
   // Update error state with debug info
   useEffect(() => {
@@ -258,9 +276,13 @@ export function PeerProvider({ children, peerServerOptions }: PeerProviderProps)
       setError(errorMessage);
       addDebugInfo(`Errors detected: ${errorMessage}`);
     } else {
-      setError(null);
+      // Only clear error if we're not in loading state or if we have all required components
+      const hasAllRequiredData = !networkLoading && networkInfo && localStream && peerId;
+      if (hasAllRequiredData || !isLoading) {
+        setError(null);
+      }
     }
-  }, [networkError, mediaError, peerError]);
+  }, [networkError, mediaError, peerError, networkLoading, networkInfo, localStream, peerId, isLoading]);
 
   const contextValue: PeerContextType = {
     // Network and grouping
@@ -287,7 +309,7 @@ export function PeerProvider({ children, peerServerOptions }: PeerProviderProps)
     
     // Loading and error states
     isLoading,
-    error: error || (debugInfo.length > 0 ? `Debug: ${debugInfo.join(' | ')}` : null)
+    error: error || (isLoading && debugInfo.length > 0 ? `Debug: ${debugInfo.join(' | ')}` : null)
   };
 
   return (
