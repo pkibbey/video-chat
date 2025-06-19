@@ -5,7 +5,14 @@ import { Card } from "@/components/ui/card";
 import { useVideoChat, useWanIp, type VideoStats } from "@/lib/useVideoChat";
 
 export default function Home() {
-	const { allPeers, stats } = useVideoChat();
+	const {
+		allPeers,
+		stats,
+		isLocalMicEnabled,
+		toggleLocalMic,
+		remoteAudioEnabled,
+		toggleRemoteAudio,
+	} = useVideoChat();
 
 	return (
 		<main className="min-h-screen bg-neutral-100 p-4">
@@ -14,7 +21,18 @@ export default function Home() {
 				{Object.entries(allPeers).map(([id, stream]) =>
 					stream ? (
 						<Card key={id} className="flex flex-col items-center p-2">
-							<VideoPlayer stream={stream} stats={stats[id]} />
+							<VideoPlayer
+								stream={stream}
+								stats={stats[id]}
+								id={id}
+								isLocal={id === "local"}
+								isMicEnabled={
+									id === "local" ? isLocalMicEnabled : remoteAudioEnabled[id]
+								}
+								onToggleMic={
+									id === "local" ? toggleLocalMic : () => toggleRemoteAudio(id)
+								}
+							/>
 							<span className="mt-2 text-xs text-neutral-500">{id}</span>
 						</Card>
 					) : null,
@@ -27,9 +45,17 @@ export default function Home() {
 function VideoPlayer({
 	stream,
 	stats,
+	id,
+	isLocal,
+	isMicEnabled,
+	onToggleMic,
 }: {
 	stream: MediaStream;
 	stats?: VideoStats;
+	id: string;
+	isLocal: boolean;
+	isMicEnabled?: boolean;
+	onToggleMic: () => void;
 }) {
 	const ref = useRef<HTMLVideoElement>(null);
 	const wanIp = useWanIp();
@@ -38,6 +64,7 @@ function VideoPlayer({
 			ref.current.srcObject = stream;
 		}
 	}, [stream]);
+
 	return (
 		<div className="w-full flex flex-col items-center">
 			<video
@@ -45,8 +72,23 @@ function VideoPlayer({
 				autoPlay
 				playsInline
 				className="rounded w-full aspect-video bg-black"
-				muted
+				muted={isLocal}
 			/>
+			<button
+				type="button"
+				className={`mt-2 px-3 py-1 rounded text-xs font-semibold ${
+					isMicEnabled ? "bg-green-500 text-white" : "bg-red-500 text-white"
+				}`}
+				onClick={onToggleMic}
+			>
+				{isMicEnabled
+					? isLocal
+						? "Mic On"
+						: "Audio On"
+					: isLocal
+						? "Mic Off"
+						: "Audio Off"}
+			</button>
 			{stats && (
 				<div className="mt-1 text-xs text-blue-700 text-left w-full">
 					{stats.width && stats.height && (

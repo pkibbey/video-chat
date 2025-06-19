@@ -1,6 +1,6 @@
 import Peer from "peerjs";
 import { publicIpv4 } from "public-ip";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 import { PEER_SERVER, SOCKET_SERVER } from "@/config/network";
 
@@ -22,6 +22,11 @@ export type VideoStats = {
 export function useVideoChat() {
 	const [peers, setPeers] = useState<{ [id: string]: MediaStream }>({});
 	const [stats, setStats] = useState<{ [id: string]: VideoStats }>({});
+	const [isLocalMicEnabled, setIsLocalMicEnabled] = useState(false); // Start muted
+	const [remoteAudioEnabled, setRemoteAudioEnabled] = useState<{
+		[id: string]: boolean;
+	}>({});
+	const [myPeerId, setMyPeerId] = useState<string | null>(null);
 	const localStream = useRef<MediaStream | null>(null);
 	const peerInstance = useRef<Peer | null>(null);
 	const socketRef = useRef<ReturnType<typeof io> | null>(null);
@@ -31,11 +36,128 @@ export function useVideoChat() {
 	// Add local stream to peers for unified rendering
 	const allPeers = { local: localStream.current, ...peers };
 
+	// Toggle local mic and broadcast
+	const toggleLocalMic = useCallback(() => {
+		if (localStream.current) {
+			const audioTrack = localStream.current.getAudioTracks()[0];
+			if (audioTrack) {
+				audioTrack.enabled = !audioTrack.enabled;
+				setIsLocalMicEnabled(audioTrack.enabled);
+				// Broadcast mic toggle if enabled
+				if (socketRef.current && myPeerId) {
+					console.log("Emitting mic-toggle", myPeerId, audioTrack.enabled);
+					socketRef.current.emit("mic-toggle", {
+						peerId: myPeerId,
+						enabled: audioTrack.enabled,
+					});
+				}
+			}
+		}
+	}, [myPeerId]);
+
+	// Toggle remote audio for a given peer id and broadcast
+	const toggleRemoteAudio = useCallback(
+		(id: string) => {
+			const stream = peers[id];
+			if (stream) {
+				const audioTrack = stream.getAudioTracks()[0];
+				if (audioTrack) {
+					audioTrack.enabled = !audioTrack.enabled;
+					setRemoteAudioEnabled((prev) => ({
+						...prev,
+						[id]: audioTrack.enabled,
+					}));
+					// Broadcast remote audio toggle
+					if (socketRef.current && myPeerId) {
+						console.log("Emitting mic-toggle for peer", id, audioTrack.enabled);
+						socketRef.current.emit("mic-toggle", {
+							peerId: id,
+							enabled: audioTrack.enabled,
+						});
+					}
+				}
+			}
+		},
+		[peers, myPeerId],
+	);
+
+	// Listen for mic-toggle events from others
+	useEffect(() => {
+		if (!socketRef.current) return;
+		const handler = (data: { peerId: string; enabled: boolean }) => {
+			console.log("handler: ", data.peerId, data.enabled);
+			if (data.peerId === myPeerId) return; // Ignore self
+			if (data.peerId === myPeerId) return;
+			if (data.peerId === "local") {
+				// Should never happen, but ignore
+				return;
+			}
+			if (data.peerId !== myPeerId && data.enabled) {
+				// Another user enabled their mic, disable ours if enabled
+				if (localStream.current) {
+					const audioTrack = localStream.current.getAudioTracks()[0];
+					if (audioTrack?.enabled) {
+						audioTrack.enabled = false;
+						setIsLocalMicEnabled(false);
+					}
+				}
+			}
+			// If a peer's audio is enabled, disable all other remote audios
+			if (data.enabled) {
+				Object.entries(peers).forEach(([id, stream]) => {
+					if (id !== data.peerId) {
+						const audioTrack = stream.getAudioTracks()[0];
+						if (audioTrack && audioTrack.enabled) {
+							audioTrack.enabled = false;
+							setRemoteAudioEnabled((prev) => ({ ...prev, [id]: false }));
+						}
+					}
+				});
+			}
+			// Set the toggled peer's audio to the new state
+			if (peers[data.peerId]) {
+				const audioTrack = peers[data.peerId].getAudioTracks()[0];
+				if (audioTrack) {
+					audioTrack.enabled = data.enabled;
+					setRemoteAudioEnabled((prev) => ({
+						...prev,
+						[data.peerId]: data.enabled,
+					}));
+				}
+			}
+		};
+		socketRef.current.on("mic-toggle", handler);
+		return () => {
+			socketRef.current?.off("mic-toggle", handler);
+		};
+		// Add socketRef.current as a dependency so the effect re-runs when the socket is ready
+	}, [myPeerId, peers, socketRef.current]);
+
+	// Keep remoteAudioEnabled in sync with new peers
+	// biome-ignore lint/correctness/useExhaustiveDependencies: Prevent infinite loop
+	useEffect(() => {
+		Object.entries(peers).forEach(([id, stream]) => {
+			const audioTrack = stream.getAudioTracks()[0];
+			if (audioTrack && remoteAudioEnabled[id] === undefined) {
+				setRemoteAudioEnabled((prev) => ({
+					...prev,
+					[id]: audioTrack.enabled,
+				}));
+			}
+		});
+	}, [peers]);
+
 	useEffect(() => {
 		navigator.mediaDevices
 			.getUserMedia({ video: true, audio: true })
 			.then(async (stream) => {
 				localStream.current = stream;
+				// Always start with mic muted
+				const audioTrack = stream.getAudioTracks()[0];
+				if (audioTrack) {
+					audioTrack.enabled = false;
+					setIsLocalMicEnabled(false);
+				}
 				setPeers((prev) => ({ ...prev }));
 				if (localStream.current) {
 					// Set max video bitrate (e.g., 300 kbps)
@@ -63,6 +185,7 @@ export function useVideoChat() {
 					});
 					peerInstance.current = peer;
 					peer.on("open", (id) => {
+						setMyPeerId(id);
 						const socket = io(SOCKET_SERVER, {
 							transports: ["websocket"],
 							secure: true,
@@ -315,6 +438,10 @@ export function useVideoChat() {
 	return {
 		allPeers,
 		stats,
+		isLocalMicEnabled,
+		toggleLocalMic,
+		remoteAudioEnabled,
+		toggleRemoteAudio,
 	};
 }
 
