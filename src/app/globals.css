@@ -112,6 +112,42 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+/* LiveKit video debugging styles */
+.lk-video-conference {
+  background-color: #f3f4f6 !important;
+  min-height: 400px !important;
+}
+
+.lk-participant-tile {
+  border: 2px solid #e5e7eb !important;
+  background-color: #ffffff !important;
+  min-height: 200px !important;
+  min-width: 200px !important;
+}
+
+.lk-participant-tile video {
+  background-color: #000000 !important;
+  border-radius: 8px !important;
+}
+
+.lk-grid-layout {
+  gap: 16px !important;
+  padding: 16px !important;
+}
+
+/* Ensure video elements are visible */
+video {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+/* Debug border for video containers */
+.lk-video-conference > * {
+  border: 1px dashed #ff0000 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -1,25 +1,62 @@
 "use client";
 
 import {
+	ControlBar,
+	GridLayout,
 	LiveKitRoom,
+	ParticipantTile,
 	RoomAudioRenderer,
-	VideoConference,
+	useParticipants,
+	useTracks,
 } from "@livekit/components-react";
+import { Track } from "livekit-client";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { liveKitConfig } from "@/config/livekit";
-import { LiveKitService } from "@/lib/livekit";
 import { log } from "@/lib/logger";
+import { ParticipantDebugger } from "./ParticipantDebugger";
 import "@livekit/components-styles";
 
-interface VideoChatProps {
+interface EnhancedVideoChatProps {
 	roomName: string;
 	deviceName: string;
 	onLeave: () => void;
 }
 
-export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
+function VideoGrid() {
+	const tracks = useTracks(
+		[
+			{ source: Track.Source.Camera, withPlaceholder: true },
+			{ source: Track.Source.ScreenShare, withPlaceholder: false },
+		],
+		{ onlySubscribed: false },
+	);
+	const participants = useParticipants();
+
+	log.debug("VideoGrid render", {
+		tracksCount: tracks.length,
+		participantsCount: participants.length,
+		tracks: tracks.map((t) => ({
+			participant: t.participant.identity,
+			source: t.source,
+			publication: !!t.publication,
+		})),
+	});
+
+	return (
+		<GridLayout tracks={tracks} style={{ height: "100%" }}>
+			{/* ParticipantTile will automatically render the track */}
+			<ParticipantTile />
+		</GridLayout>
+	);
+}
+
+export function EnhancedVideoChat({
+	roomName,
+	deviceName,
+	onLeave,
+}: EnhancedVideoChatProps) {
 	const [token, setToken] = useState<string>("");
 	const [isConnecting, setIsConnecting] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -31,18 +68,26 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 
 			log.info("Generating LiveKit token", { roomName, deviceName });
 
-			// Create LiveKit service instance
-			const liveKitService = new LiveKitService();
-
-			// Generate token using the service
-			// In production, this should be done on your backend
-			const generatedToken = await (liveKitService as any).generateToken({
-				roomName,
-				participantName: deviceName,
-				participantIdentity: `user-${Date.now()}`,
+			// Fetch token from API endpoint
+			const response = await fetch("/api/livekit-token", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					roomName,
+					participantName: deviceName,
+					participantIdentity: `user-${Date.now()}`,
+					createRoom: true, // Request room creation with optimal settings
+				}),
 			});
 
-			setToken(generatedToken);
+			if (!response.ok) {
+				throw new Error(`Failed to generate token: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			setToken(data.token);
 			setIsConnecting(false);
 
 			log.success("LiveKit token generated successfully");
@@ -126,13 +171,19 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 				serverUrl={liveKitConfig.wsURL}
 				onDisconnected={handleDisconnected}
 				onError={handleError}
+				onConnected={() => {
+					log.info("Successfully connected to LiveKit room");
+				}}
+				connectOptions={{
+					autoSubscribe: true,
+				}}
 				style={{ height: "100%" }}
 				className="flex flex-col"
 			>
 				{/* Custom header */}
 				<div className="bg-gray-900 text-white p-4 flex justify-between items-center">
 					<div>
-						<h1 className="text-lg font-semibold">Video Chat</h1>
+						<h1 className="text-lg font-semibold">Enhanced Video Chat</h1>
 						<p className="text-sm text-gray-300">Room: {roomName}</p>
 					</div>
 					<Button onClick={onLeave} variant="destructive" size="sm">
@@ -141,8 +192,14 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 				</div>
 
 				{/* Video conference area */}
-				<div className="flex-1 relative">
-					<VideoConference />
+				<div className="flex-1 relative bg-gray-100">
+					<VideoGrid />
+					<ParticipantDebugger />
+				</div>
+
+				{/* Control bar */}
+				<div className="bg-gray-800 p-2">
+					<ControlBar />
 				</div>
 
 				{/* Audio renderer for participants */}

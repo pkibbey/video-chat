@@ -1,15 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { 
-  LiveKitRoom, 
-  VideoConference, 
-  RoomAudioRenderer,
+import {
+	LiveKitRoom,
+	RoomAudioRenderer,
+	VideoConference,
 } from "@livekit/components-react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { liveKitConfig } from "@/config/livekit";
 import { log } from "@/lib/logger";
+import { ParticipantDebugger } from "./ParticipantDebugger";
 import "@livekit/components-styles";
 
 interface VideoChatProps {
@@ -27,19 +28,20 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 		try {
 			setIsConnecting(true);
 			setError(null);
-			
+
 			log.info("Generating LiveKit token", { roomName, deviceName });
-			
+
 			// Fetch token from API endpoint
-			const response = await fetch('/api/livekit-token', {
-				method: 'POST',
+			const response = await fetch("/api/livekit-token", {
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
 					roomName,
 					participantName: deviceName,
 					participantIdentity: `user-${Date.now()}`,
+					createRoom: true, // Request room creation with optimal settings
 				}),
 			});
 
@@ -50,10 +52,11 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 			const data = await response.json();
 			setToken(data.token);
 			setIsConnecting(false);
-			
+
 			log.success("LiveKit token generated successfully");
 		} catch (err) {
-			const errorMessage = err instanceof Error ? err.message : "Failed to generate token";
+			const errorMessage =
+				err instanceof Error ? err.message : "Failed to generate token";
 			log.error("Failed to generate LiveKit token", { error: err });
 			setError(errorMessage);
 			setIsConnecting(false);
@@ -131,6 +134,12 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 				serverUrl={liveKitConfig.wsURL}
 				onDisconnected={handleDisconnected}
 				onError={handleError}
+				onConnected={() => {
+					log.info("Successfully connected to LiveKit room");
+				}}
+				connectOptions={{
+					autoSubscribe: true,
+				}}
 				style={{ height: "100%" }}
 				className="flex flex-col"
 			>
@@ -140,18 +149,15 @@ export function VideoChat({ roomName, deviceName, onLeave }: VideoChatProps) {
 						<h1 className="text-lg font-semibold">Video Chat</h1>
 						<p className="text-sm text-gray-300">Room: {roomName}</p>
 					</div>
-					<Button 
-						onClick={onLeave}
-						variant="destructive"
-						size="sm"
-					>
+					<Button onClick={onLeave} variant="destructive" size="sm">
 						Leave Room
 					</Button>
 				</div>
 
 				{/* Video conference area */}
-				<div className="flex-1 relative">
+				<div className="flex-1 relative bg-gray-100">
 					<VideoConference />
+					<ParticipantDebugger />
 				</div>
 
 				{/* Audio renderer for participants */}

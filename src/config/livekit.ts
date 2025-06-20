@@ -17,6 +17,16 @@ export const liveKitConfig: LiveKitConfig = {
 	apiSecret: process.env.LIVEKIT_API_SECRET || "secret",
 };
 
+// Debug: Log the actual configuration being used
+console.log("🔧 LiveKit Configuration:", {
+	wsURL: liveKitConfig.wsURL,
+	apiKey: liveKitConfig.apiKey ? "***exists***" : "missing",
+	apiSecret: liveKitConfig.apiSecret ? "***exists***" : "missing",
+	env_wsURL: process.env.NEXT_PUBLIC_LIVEKIT_WS_URL || "not set",
+	env_apiKey: process.env.LIVEKIT_API_KEY ? "set" : "not set",
+	env_apiSecret: process.env.LIVEKIT_API_SECRET ? "set" : "not set",
+});
+
 // Room options
 export const roomOptions = {
 	// Automatically manage camera and microphone

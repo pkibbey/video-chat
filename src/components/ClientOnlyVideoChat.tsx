@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EnhancedVideoChat } from "./EnhancedVideoChat";
 import { VideoChat } from "./VideoChat";
 
 interface ClientOnlyVideoChatProps {
@@ -11,9 +12,13 @@ interface ClientOnlyVideoChatProps {
 
 export function ClientOnlyVideoChat(props: ClientOnlyVideoChatProps) {
 	const [isClient, setIsClient] = useState(false);
+	const [useEnhanced, setUseEnhanced] = useState(false);
 
 	useEffect(() => {
 		setIsClient(true);
+		// Check if we should use enhanced version from localStorage for testing
+		const enhanced = localStorage.getItem("useEnhancedVideoChat") === "true";
+		setUseEnhanced(enhanced);
 	}, []);
 
 	if (!isClient) {
@@ -25,6 +30,10 @@ export function ClientOnlyVideoChat(props: ClientOnlyVideoChatProps) {
 				</div>
 			</div>
 		);
+	}
+
+	if (useEnhanced) {
+		return <EnhancedVideoChat {...props} />;
 	}
 
 	return <VideoChat {...props} />;
