@@ -1,131 +1,91 @@
+/** biome-ignore-all lint/a11y/noLabelWithoutControl: Testing */
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Card } from "@/components/ui/card";
-import { useVideoChat, useWanIp, type VideoStats } from "@/lib/useVideoChat";
+import { useEffect, useState } from "react";
+import { ClientOnlyVideoChat } from "@/components/ClientOnlyVideoChat";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { log } from "@/lib/logger";
 
 export default function Home() {
-	const {
-		allPeers,
-		stats,
-		isLocalMicEnabled,
-		toggleLocalMic,
-		remoteAudioEnabled,
-		toggleRemoteAudio,
-	} = useVideoChat();
+	const [roomName, setRoomName] = useState("");
+	const [isConnected, setIsConnected] = useState(false);
+	const [deviceName, setDeviceName] = useState("");
 
-	return (
-		<main className="min-h-screen bg-neutral-100 p-4">
-			<h1 className="text-2xl font-bold mb-4">Video Chat Room</h1>
-			<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-				{Object.entries(allPeers).map(([id, stream]) =>
-					stream ? (
-						<Card key={id} className="flex flex-col items-center p-2">
-							<VideoPlayer
-								stream={stream}
-								stats={stats[id]}
-								id={id}
-								isLocal={id === "local"}
-								isMicEnabled={
-									id === "local" ? isLocalMicEnabled : remoteAudioEnabled[id]
-								}
-								onToggleMic={
-									id === "local" ? toggleLocalMic : () => toggleRemoteAudio(id)
-								}
-							/>
-							<span className="mt-2 text-xs text-neutral-500">{id}</span>
-						</Card>
-					) : null,
-				)}
-			</div>
-		</main>
-	);
-}
-
-function VideoPlayer({
-	stream,
-	stats,
-	id,
-	isLocal,
-	isMicEnabled,
-	onToggleMic,
-}: {
-	stream: MediaStream;
-	stats?: VideoStats;
-	id: string;
-	isLocal: boolean;
-	isMicEnabled?: boolean;
-	onToggleMic: () => void;
-}) {
-	const ref = useRef<HTMLVideoElement>(null);
-	const wanIp = useWanIp();
 	useEffect(() => {
-		if (ref.current) {
-			ref.current.srcObject = stream;
+		log.debug("Home component mounted");
+		// Generate a default device name based on user agent or timestamp
+		const defaultDeviceName = `Device-${Date.now().toString().slice(-4)}`;
+		setDeviceName(defaultDeviceName);
+		log.info("Generated default device name", {
+			deviceName: defaultDeviceName,
+		});
+	}, []);
+
+	const joinRoom = async () => {
+		if (!roomName.trim()) {
+			log.warn("Attempted to join room with empty name");
+			return;
 		}
-	}, [stream]);
+
+		if (!deviceName.trim()) {
+			log.warn("Attempted to join room with empty device name");
+			return;
+		}
+
+		log.info("Joining room", { roomName: roomName.trim(), deviceName });
+		setIsConnected(true);
+	};
+
+	const leaveRoom = () => {
+		log.info("Leaving room", { roomName });
+		setIsConnected(false);
+		log.success("Successfully left room");
+	};
+
+	if (isConnected) {
+		return (
+			<ClientOnlyVideoChat
+				roomName={roomName.trim()}
+				deviceName={deviceName.trim()}
+				onLeave={leaveRoom}
+			/>
+		);
+	}
 
 	return (
-		<div className="w-full flex flex-col items-center">
-			<video
-				ref={ref}
-				autoPlay
-				playsInline
-				className="rounded w-full aspect-video bg-black"
-				muted={isLocal}
-			/>
-			<button
-				type="button"
-				className={`mt-2 px-3 py-1 rounded text-xs font-semibold ${
-					isMicEnabled ? "bg-green-500 text-white" : "bg-red-500 text-white"
-				}`}
-				onClick={onToggleMic}
-			>
-				{isMicEnabled
-					? isLocal
-						? "Mic On"
-						: "Audio On"
-					: isLocal
-						? "Mic Off"
-						: "Audio Off"}
-			</button>
-			{stats && (
-				<div className="mt-1 text-xs text-blue-700 text-left w-full">
-					{stats.width && stats.height && (
-						<div>
-							Resolution: {stats.width}x{stats.height}
-						</div>
-					)}
-					{typeof stats.bitrate === "number" && (
-						<div>Bitrate: {Math.round(stats.bitrate / 1000)} kbps</div>
-					)}
-					{stats.codec && <div>Codec: {stats.codec}</div>}
-					{typeof stats.framesPerSecond === "number" && (
-						<div>FPS: {stats.framesPerSecond}</div>
-					)}
-					{typeof stats.framesDecoded === "number" && (
-						<div>Frames Decoded: {stats.framesDecoded}</div>
-					)}
-					{typeof stats.framesDropped === "number" && (
-						<div>Frames Dropped: {stats.framesDropped}</div>
-					)}
-					{typeof stats.jitter === "number" && (
-						<div>Jitter: {stats.jitter}</div>
-					)}
-					{typeof stats.packetsLost === "number" && (
-						<div>Packets Lost: {stats.packetsLost}</div>
-					)}
-					{typeof stats.packetsReceived === "number" && (
-						<div>Packets Received: {stats.packetsReceived}</div>
-					)}
-					{typeof stats.frameDelay === "number" && (
-						<div>Frame Delay: {stats.frameDelay.toFixed(2)}s</div>
-					)}
-				</div>
-			)}
-			<div className="mt-1 text-xs text-green-700">
-				WAN IP: {wanIp || "..."}
-			</div>
-		</div>
+		<main className="flex min-h-screen flex-col items-center justify-center p-24">
+			<Card className="w-full max-w-md">
+				<CardHeader>
+					<CardTitle>Multi-Device Video Chat</CardTitle>
+				</CardHeader>
+				<CardContent className="space-y-4">
+					<div>
+						<label className="text-sm font-medium">Device Name</label>
+						<Input
+							value={deviceName}
+							onChange={(e) => setDeviceName(e.target.value)}
+							placeholder="Enter device name"
+						/>
+					</div>
+					<div>
+						<label className="text-sm font-medium">Room Name</label>
+						<Input
+							value={roomName}
+							onChange={(e) => setRoomName(e.target.value)}
+							placeholder="Enter room name"
+						/>
+					</div>
+					<Button
+						onClick={joinRoom}
+						className="w-full"
+						disabled={!roomName.trim() || !deviceName.trim()}
+					>
+						Join Room
+					</Button>
+				</CardContent>
+			</Card>
+		</main>
 	);
 }
