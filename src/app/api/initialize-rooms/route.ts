@@ -4,7 +4,7 @@ import { roomManager } from "@/lib/room-management";
 /**
  * Pre-create some default rooms for common use cases
  */
-export async function initializeDefaultRooms() {
+async function initializeDefaultRooms() {
 	const defaultRooms = [
 		{
 			name: "general",

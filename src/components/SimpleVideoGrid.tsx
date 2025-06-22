@@ -18,25 +18,15 @@ export function SimpleVideoGrid({
 	style,
 	...props
 }: SimpleVideoGridProps & React.HTMLAttributes<HTMLDivElement>) {
-	// Calculate optimal grid columns based on number of tracks
-	const getGridColumns = (count: number) => {
-		if (count <= 1) return 1;
-		if (count <= 4) return 2;
-		if (count <= 9) return 3;
-		if (count <= 16) return 4;
-		return Math.ceil(Math.sqrt(count));
-	};
-
-	const gridColumns = getGridColumns(tracks.length);
-
+	// Ultra-simple responsive grid: auto-fit with minimum 300px columns
 	return (
 		<div
 			className={cn("simple-video-grid", className)}
 			style={{
 				display: "grid",
-				gridTemplateColumns: `repeat(${gridColumns}, 1fr)`,
-				gap: "16px",
-				padding: "16px",
+				gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+				gap: "1rem",
+				padding: "1rem",
 				height: "100%",
 				width: "100%",
 				...style,
