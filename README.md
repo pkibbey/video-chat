@@ -1,31 +1,27 @@
-# Video Chat
+# Video Chat Application
 
-A video chat application that allows users to stream their own multi-cam setup using old phones
+A multi-camera video conferencing app that allows users to connect multiple devices (like old phones) to a single room, creating a seamless multi-cam experience. The application intelligently switches between microphones based on which device detects the loudest audio, eliminating feedback and enabling users to move freely while presenting.
 
-
-
-## About
-
-A video chat application that allows users to stream their own multi-cam setup using old phones Whether you're looking to track your repositories, analyze their performance, or generate documentation, this tool is designed to help.
+<!-- [Live Demo](https://...) -->
 
 ## Features
 
-- ✨ Repository management
-- 🚀 Automated workflows
-- 📊 Data analysis
-- 🔧 Easy configuration
-- 📝 Comprehensive documentation
-- 🧠 Built with TypeScript
+- **Multi-Device Support**: Connect multiple cameras and microphones from different devices into a single conference room
+- **Intelligent Audio Switching**: Automatically detects and switches between microphones based on audio levels, preventing feedback
+- **Device Management**: View and manage all connected devices, their microphone status, and audio levels in real-time
+- **Real-time Video Grid**: Display video feeds from all connected devices simultaneously
+- **Room Management**: Create and manage conference rooms with secure token-based access
+- **Comprehensive Diagnostics**: Built-in logging and debugging tools to troubleshoot connection issues
 
 ## Getting Started
 
 ### Prerequisites
 
-- Git
-- Node.js (v14 or higher) or your project's required runtime
-- Your system's package manager (npm, yarn, pnpm, or bun)
+- **Node.js** v16 or higher
+- **npm**, **yarn**, **pnpm**, or **bun** package manager
+- **LiveKit Server** (for local development or self-hosted deployment)
 
-### Installation
+### Installation & Development
 
 1. Clone the repository:
    ```bash
@@ -36,44 +32,60 @@ A video chat application that allows users to stream their own multi-cam setup u
 2. Install dependencies:
    ```bash
    npm install
-   # or
-   yarn install
    ```
 
-3. Configure your environment:
-   Create a `.env.local` file with any required environment variables.
+3. Set up LiveKit (see [LIVEKIT_SETUP.md](docs/LIVEKIT_SETUP.md) for detailed instructions):
+   ```bash
+   # Copy example environment variables
+   cp .env.example .env.local
+   ```
 
 4. Start the development server:
    ```bash
    npm run dev
-   # or
-   yarn dev
    ```
 
-## Usage
+   For HTTPS (required for camera/microphone access in production):
+   ```bash
+   npm run dev:https
+   ```
 
-[Add usage examples and instructions here]
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Contributing
+## Project Structure
 
-We welcome contributions! Please follow these steps:
+### Key Components
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+- **EnhancedVideoChat.tsx**: Main video chat interface using LiveKit components, displays video grid and controls
+- **DeviceManager.tsx**: Manages multiple connected devices, tracks audio levels, and switches the active microphone based on sound intensity
+- **SimpleVideoGrid.tsx**: Renders video feeds from all participants in the room
+- **RoomManager.tsx**: Handles room creation, joining, and participant management
+- **ClientErrorLogger.tsx**: Captures and logs client-side errors for debugging
 
-## License
+### API Routes
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **/api/initialize-rooms**: Creates and initializes conference rooms
+- **/api/livekit-token**: Generates secure access tokens for LiveKit room connections
+- **/api/room-management**: Provides room list and metadata management
 
-## Support
+### Configuration
 
-For questions or issues, please open an issue on [GitHub Issues](https://github.com/pkibbey/video-chat/issues).
+- **livekit.ts**: LiveKit client configuration
+- **logger.ts**: Centralized logging system for debugging
+- **room-management.ts**: Room creation and management utilities
 
----
+## Tech Stack
 
-**Repository:** [pkibbey/video-chat](https://github.com/pkibbey/video-chat)
+- **Next.js 15** - React framework with API routes and server-side rendering
+- **React 19** - UI component library
+- **TypeScript** - Static type checking
+- **LiveKit** - Real-time video/audio streaming and room management
+- **Tailwind CSS 4** - Utility-first CSS framework
+- **shadcn/ui** - Accessible component library built on Radix UI
+- **Biome** - Fast linter and formatter
 
-Generated with ❤️
+## Additional Resources
+
+- [Initial Setup Guide](docs/INITIAL_SETUP.md) - Project goals and original requirements
+- [LiveKit Setup Guide](docs/LIVEKIT_SETUP.md) - Detailed LiveKit configuration and deployment options
+- [Logging Guide](docs/LOGGING.md) - Debug logging and troubleshooting
