@@ -1,4 +1,8 @@
-# Video Chat Application
+<p align="center">
+  <img src="./logo.png" alt="MultiCam logo" width="220" />
+</p>
+
+<h1 align="center">MultiCam</h1>
 
 A multi-camera video conferencing app that allows users to connect multiple devices on the same network (like old phones) to a single room, creating a seamless multi-cam experience. The application intelligently switches between microphones based on which device detects the loudest audio, eliminating feedback and enabling users to move freely while presenting.
 
